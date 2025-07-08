@@ -3,6 +3,8 @@ from PIL import Image
 from tkinter import messagebox
 from tkinter import filedialog
 import os
+import traceback
+
 
 # Appearance settings
 ctk.set_appearance_mode("System")
@@ -45,32 +47,53 @@ def convert_images():
         messagebox.showwarning("No Images", "Please select image files to convert.")
         return
 
-    # Ask user where to save the converted images
     output_folder = filedialog.askdirectory(title="Select Output Folder")
     if not output_folder:
-        return  # User cancelled
+        return
 
-    # Get selected format
-    target_format = selected_format.get().lower()  # e.g., "png"
-
+    target_format = selected_format.get().lower()
     success_count = 0
-    for file_path in selected_files:
+
+    # Prepare textbox
+    file_display.configure(state="normal")
+    file_display.insert("end", f"\n--- Converting to {target_format.upper()} ---\n")
+
+    unique_files = list(set(selected_files))  # prevent duplicates
+
+    for file_path in unique_files:
         try:
             with Image.open(file_path) as img:
-                # Remove extension and append new one
-                filename = os.path.splitext(os.path.basename(file_path))[0]
-                new_filename = f"{filename}.{target_format}"
+                # Build filenames
+                base_name = os.path.splitext(os.path.basename(file_path))[0]
+                original_ext = os.path.splitext(file_path)[1].lstrip(".").upper()
+                new_filename = f"{base_name}.{target_format}"
                 output_path = os.path.join(output_folder, new_filename)
 
-                # Convert and save image
-                rgb_img = img.convert("RGB") if target_format in ["jpg", "jpeg"] else img
-                rgb_img.save(output_path, format=target_format.upper())
-                success_count += 1
-        except Exception as e:
-            print(f"Failed to convert {file_path}: {e}")
+                # Format fix for JPG → JPEG
+                pillow_format = "JPEG" if target_format == "jpg" else target_format.upper()
 
-    # Show result
-    messagebox.showinfo("Done", f"Successfully converted {success_count} image(s) to {target_format.upper()}.")
+                # Convert + Save
+                rgb_img = img.convert("RGB") if pillow_format in ["JPEG"] else img
+                rgb_img.save(output_path, format=pillow_format)
+
+                # Log success
+                file_display.insert(
+                    "end",
+                    f"{base_name}.{original_ext.lower()} → {new_filename} ✅ Converted Successfully\n"
+                )
+                success_count += 1
+
+        except Exception as e:
+            file_display.insert(
+                "end",
+                f"{os.path.basename(file_path)} → {new_filename} ❌ Failed to Convert! ({e})\n"
+            )
+            traceback.print_exc()
+
+    file_display.insert("end", f"\nDone! {success_count} of {len(unique_files)} converted.\n")
+    file_display.see("end")
+    file_display.configure(state="disabled")
+
 
 
 # Title
