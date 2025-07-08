@@ -10,6 +10,7 @@ ctk.set_default_color_theme("blue")
 
 # Main app window
 app = ctk.CTk()
+app.iconbitmap("assets/icon.ico")
 app.title("Universal File Converter - Image Module")
 app.geometry("600x400")
 app.resizable(False, False)
