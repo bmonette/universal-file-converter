@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from image_converter.converter import convert_images as convert_image_files
 from PIL import Image
 from tkinter import messagebox
 from tkinter import filedialog
@@ -42,7 +43,7 @@ def select_images():
         file_display.configure(state="disabled")
 
 
-def convert_images():
+def handle_conversion():
     if not selected_files:
         messagebox.showwarning("No Images", "Please select image files to convert.")
         return
@@ -52,48 +53,26 @@ def convert_images():
         return
 
     target_format = selected_format.get().lower()
-    success_count = 0
 
     # Prepare textbox
     file_display.configure(state="normal")
     file_display.insert("end", f"\n--- Converting to {target_format.upper()} ---\n")
 
-    unique_files = list(set(selected_files))  # prevent duplicates
+    # Log function that updates the textbox
+    def log_callback(message):
+        file_display.insert("end", message + "\n")
+        file_display.see("end")
 
-    for file_path in unique_files:
-        try:
-            with Image.open(file_path) as img:
-                # Build filenames
-                base_name = os.path.splitext(os.path.basename(file_path))[0]
-                original_ext = os.path.splitext(file_path)[1].lstrip(".").upper()
-                new_filename = f"{base_name}.{target_format}"
-                output_path = os.path.join(output_folder, new_filename)
+    # Use the new module logic
+    success_count = convert_image_files(
+        file_paths=selected_files,
+        target_format=target_format,
+        output_folder=output_folder,
+        log_callback=log_callback
+    )
 
-                # Format fix for JPG → JPEG
-                pillow_format = "JPEG" if target_format == "jpg" else target_format.upper()
-
-                # Convert + Save
-                rgb_img = img.convert("RGB") if pillow_format in ["JPEG"] else img
-                rgb_img.save(output_path, format=pillow_format)
-
-                # Log success
-                file_display.insert(
-                    "end",
-                    f"{base_name}.{original_ext.lower()} → {new_filename} ✅ Converted Successfully\n"
-                )
-                success_count += 1
-
-        except Exception as e:
-            file_display.insert(
-                "end",
-                f"{os.path.basename(file_path)} → {new_filename} ❌ Failed to Convert! ({e})\n"
-            )
-            traceback.print_exc()
-
-    file_display.insert("end", f"\nDone! {success_count} of {len(unique_files)} converted.\n")
-    file_display.see("end")
+    file_display.insert("end", f"\nDone! {success_count} of {len(set(selected_files))} converted.\n")
     file_display.configure(state="disabled")
-
 
 
 # Title
@@ -122,7 +101,7 @@ file_display.pack(pady=10)
 file_display.insert("1.0", "No images selected.")
 file_display.configure(state="disabled")  # Make it read-only
 
-convert_button = ctk.CTkButton(app, text="🔄 Convert", command=convert_images)
+convert_button = ctk.CTkButton(app, text="🔄 Convert", command=handle_conversion)
 convert_button.pack(pady=10)
 
 # Run the app
